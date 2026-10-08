@@ -1,0 +1,52 @@
+import {useState} from 'react'
+import {ArrowRight,CheckCircle2,Edit3,Image as ImageIcon,RefreshCw,Wallet} from 'lucide-react'
+import DateField from './DateField'
+import {formatDay,getIsoDay,names,num,type Field,type Module,type RecordItem} from './gymData'
+import type {CalendarMode} from './calendar'
+import {optionLabel,text,useLanguage} from './i18n'
+
+type RecordModule=Exclude<Module,'reports'|'backup'>
+type RenewalValues={membership:string;start:string;end:string;fee:string;paid:string}
+type RenewalRecord=RenewalValues&{date:string}
+type Props={record:RecordItem;columns:Field[];module:RecordModule;calendar:CalendarMode;onClose:()=>void;onEdit:()=>void;onPay:(amount:number)=>void;onRenew:(values:RenewalValues)=>void}
+const money=(value:number)=>value.toLocaleString('en-US',{maximumFractionDigits:2})
+const membershipOptions=['روزانه','ماهانه','سه ماهه','شش ماهه','سالانه','خصوصی']
+function historyOf(value?:string):RenewalRecord[]{try{const parsed=JSON.parse(value||'[]');return Array.isArray(parsed)?parsed:[]}catch{return []}}
+const control='w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-400 dark:border-white/10 dark:bg-[#0f1d32] dark:text-white'
+
+export default function RecordProfile({record,columns,module,calendar,onClose,onEdit,onPay,onRenew}:Props){
+  const language=useLanguage()
+  const [amount,setAmount]=useState('')
+  const [renewalOpen,setRenewalOpen]=useState(false)
+  const [membership,setMembership]=useState(record.membership||'')
+  const [start,setStart]=useState(record.end?record.end:getIsoDay())
+  const [end,setEnd]=useState('')
+  const [fee,setFee]=useState(record.fee||'')
+  const [renewalPaid,setRenewalPaid]=useState('0')
+  const title=record[columns[0]?.key]||names[module][language==='English'?1:language==='پښتو'?2:0]
+  const total=num(record.fee)
+  const paid=num(record.paid)
+  const remaining=Math.max(0,total-paid)
+  const isStudent=module==='students'
+  const history=historyOf(record.renewalHistory)
+
+  function pay(){const value=Number(amount);if(!Number.isFinite(value)||value<=0)return;onPay(Math.min(value,remaining));setAmount('')}
+  function renew(){
+    if(!membership||!start||!end||!fee.trim())return alert(text(language,'requiredNameDate','نوع اشتراک، تاریخ‌ها و فیس را تکمیل کنید.'))
+    if(end<start)return alert(text(language,'invalidDate','تاریخ ختم اشتراک باید بعد از تاریخ شروع باشد.'))
+    const value=Number(renewalPaid)
+    if(!Number.isFinite(value)||value<0)return alert(text(language,'paymentInvalid','مقدار فیس پرداخت‌شده درست نیست.'))
+    onRenew({membership,start,end,fee,paid:String(Math.min(Number(fee)||0,value))})
+    setRenewalOpen(false)
+  }
+
+  return <div className="mx-auto max-w-6xl space-y-6">
+    <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" onClick={onClose} className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"><ArrowRight size={17}/>{text(language,'backToList','بازگشت به فهرست')}</button><div className="text-end"><p className="text-xs font-bold text-emerald-600 dark:text-emerald-300">{text(language,'profile','پروفایل')} {names[module][language==='English'?1:language==='پښتو'?2:0]}</p><h2 className="mt-1 text-2xl font-black">{title}</h2></div></div>
+    <section className="app-panel rounded-3xl border border-slate-200 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#101c2e] sm:p-7"><div className="flex flex-wrap items-center gap-5"><div className="shrink-0">{record.photo?<img src={record.photo} alt={title} className="size-24 rounded-2xl object-cover ring-4 ring-emerald-500/10"/>:<div className="grid size-24 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"><ImageIcon size={30}/></div>}</div><div className="min-w-[180px] flex-1"><p className="text-xs font-bold text-slate-500 dark:text-slate-400">{text(language,'fullInformation','معلومات کامل رکورد')}</p><h3 className="mt-1 text-xl font-black">{title}</h3><p className="mt-2 text-sm text-slate-500">{text(language,'profileInstruction','برای تغییر معلومات، دکمه ویرایش پروفایل را انتخاب کنید.')}</p></div><button type="button" onClick={onEdit} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-400 px-4 text-sm font-bold text-slate-950 hover:bg-emerald-300"><Edit3 size={17}/>{text(language,'edit','ویرایش پروفایل')}</button></div></section>
+    {isStudent&&<section className="grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/10 p-5"><p className="text-xs font-bold text-slate-500">{text(language,'payableFee','فیس قابل پرداخت')}</p><p className="mt-3 text-2xl font-black">{money(total)} <span className="text-sm">AFN</span></p></div><div className="rounded-2xl border border-sky-500/15 bg-sky-500/10 p-5"><p className="text-xs font-bold text-slate-500">{text(language,'paidFee','مقدار فیس پرداخت شده')}</p><p className="mt-3 text-2xl font-black">{money(paid)} <span className="text-sm">AFN</span></p></div><div className={`rounded-2xl border p-5 ${remaining?'border-rose-500/15 bg-rose-500/10':'border-emerald-500/15 bg-emerald-500/10'}`}><p className="text-xs font-bold text-slate-500">{text(language,'remainingFee','فیس باقی‌مانده')}</p><p className="mt-3 text-2xl font-black">{money(remaining)} <span className="text-sm">AFN</span></p></div></section>}
+    {isStudent&&<div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5"><div className="mb-4 flex items-center gap-2 font-black"><Wallet size={19} className="text-emerald-500"/>{text(language,'payFee','ثبت پرداخت فیس')}</div>{remaining?<div className="flex flex-col gap-3 sm:flex-row"><input type="number" min="0" max={remaining} value={amount} onChange={event=>setAmount(event.target.value)} placeholder={`حداکثر ${money(remaining)} AFN`} className={`${control} flex-1`}/><button type="button" onClick={pay} className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 text-sm font-bold text-slate-950 hover:bg-emerald-300"><CheckCircle2 size={17}/>{text(language,'paymentRegistered','ثبت پرداخت')}</button></div>:<p className="rounded-xl bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-600 dark:text-emerald-300">{text(language,'fullyPaid','فیس این شاگرد کاملاً پرداخت شده است.')}</p>}</section>
+      <section className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5"><button type="button" onClick={()=>setRenewalOpen(value=>!value)} className="flex w-full items-center justify-between gap-3 text-start"><span className="flex items-center gap-2 font-black"><RefreshCw size={19} className="text-amber-500"/>{text(language,'renewFee','تمدید فیس و اشتراک')}</span><span className="text-xs font-bold text-amber-600 dark:text-amber-300">{renewalOpen?text(language,'closeForm','بستن فورم'):text(language,'openForm','باز کردن فورم')}</span></button>{renewalOpen&&<div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="space-y-1.5 text-xs font-bold text-slate-500 dark:text-slate-300"><span>{text(language,'membershipType','نوع اشتراک')}</span><select value={membership} onChange={event=>setMembership(event.target.value)} className={control}><option value="">{text(language,'choose','انتخاب کنید')}</option>{membershipOptions.map(item=><option key={item} value={item}>{optionLabel(language,item)}</option>)}</select></label><label className="space-y-1.5 text-xs font-bold text-slate-500 dark:text-slate-300"><span>{text(language,'payableFee','فیس قابل پرداخت')}</span><input type="number" min="0" value={fee} onChange={event=>setFee(event.target.value)} className={control}/></label><label className="space-y-1.5 text-xs font-bold text-slate-500 dark:text-slate-300"><span>{text(language,'startMembership','تاریخ شروع اشتراک')}</span><DateField value={start} onChange={setStart} calendar={calendar}/></label><label className="space-y-1.5 text-xs font-bold text-slate-500 dark:text-slate-300"><span>{text(language,'endMembership','تاریخ ختم اشتراک')}</span><DateField value={end} onChange={setEnd} calendar={calendar}/></label><label className="space-y-1.5 text-xs font-bold text-slate-500 dark:text-slate-300"><span>{text(language,'paidFee','مقدار فیس پرداخت شده')}</span><input type="number" min="0" value={renewalPaid} onChange={event=>setRenewalPaid(event.target.value)} className={control}/></label><div className="flex items-end"><button type="button" onClick={renew} className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 text-sm font-bold text-slate-950 hover:bg-amber-300"><RefreshCw size={17}/>{text(language,'registerRenewal','ثبت تمدید')}</button></div></div>}</section></div>}
+    {isStudent&&history.length>0&&<section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#101c2e]"><h3 className="mb-4 text-lg font-black">{text(language,'renewalHistory','سابقه تمدید فیس')}</h3><div className="space-y-2">{history.slice().reverse().map((item,index)=><div key={`${item.date}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-white/5"><span>{optionLabel(language,item.membership||'اشتراک')} · {formatDay(item.start,calendar)} {text(language,'to','تا')} {formatDay(item.end,calendar)}</span><span className="font-black">{money(num(item.fee))} AFN</span></div>)}</div></section>}
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#101c2e] sm:p-6"><h3 className="mb-4 text-lg font-black">{text(language,'details','جزئیات رکورد')}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{columns.filter(field=>field.type!=='file'&&record[field.key]!==undefined&&record[field.key]!=='').map(field=><div key={field.key} className="rounded-xl bg-slate-50 p-4 dark:bg-white/5"><p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{field.title}</p><p className="mt-1 break-words text-sm font-semibold">{field.type==='date'?formatDay(record[field.key],calendar):field.type==='number'?money(num(record[field.key])):field.type==='select'?optionLabel(language,record[field.key]):record[field.key]}</p></div>)}</div></section>
+  </div>
+}
