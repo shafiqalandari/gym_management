@@ -26,6 +26,8 @@ Object.assign(dictionary.پښتو,{startupTagline:'ستاسې د کلب د مد�
 
 Object.assign(dictionary.English,{reportOverview:'System overview',reportOverviewSub:'See the club status at a glance',reportSection:'Selected section report'})
 Object.assign(dictionary.پښتو,{reportOverview:'د سیستم عمومي لنډیز',reportOverviewSub:'د کلب حالت په یوه کتنه کې وګورئ',reportSection:'د ټاکل شوې برخې راپور'})
+Object.assign(dictionary.English,{changePhoto:'Change photo',removePhoto:'Remove photo',selectedPhoto:'Photo selected',photoHint:'PNG, JPG or WebP up to 450 KB'})
+Object.assign(dictionary.پښتو,{changePhoto:'انځور بدل کړئ',removePhoto:'انځور لرې کړئ',selectedPhoto:'انځور وټاکل شو',photoHint:'PNG، JPG یا WebP تر ۴۵۰ کیلوبایټو پورې'})
 
 export function text(language:Language,key:string,fallback?:string){return dictionary[language][key]||fallback||(language==='دری'?key:(dictionary.English[key]||key))}
 
